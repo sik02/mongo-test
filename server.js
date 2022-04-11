@@ -3,10 +3,26 @@ const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({extended : true})); //bodyparser는 요청한 데이터 해석을 쉽게 도와줌
+var db;
+const MongoClient = require('mongodb').MongoClient;
+app.set('view engine', 'ejs'); //ejs 라이브러리 설치하고 사용하기 위한 코드
 
-app.listen(8080, function(){ //8080 포트 
-    console.log('listening on 8080')
-}); 
+
+
+MongoClient.connect('mongodb+srv://admin:admin@cluster0.4sxry.mongodb.net/todoapp?retryWrites=true&w=majority', function(에러, client){
+    if(에러) return console.log(에러) // 에러띄으눈법
+
+    db = client.db('todoapp');
+    db.collection('post').insertOne({이름 : 'John', _id : 100} , function(에러, 결과){ // db에 자료 저장하는 방법
+        console.log('저장완료');
+    });
+
+    app.listen(8080, function(){ //8080 포트 
+        console.log('listening on 8080')
+    }); 
+});
+
+
 
 app.get('/pet', function(요청, 응답){
     응답.send("펫용품 사이트");
@@ -26,8 +42,28 @@ app.get('/write', function(요청, 응답){
 
 app.post('/add', function(요청, 응답){ //submit한 정보는 요청 파라미터에 담겨있음 꺼내쓰려면 라이브러리 설치 필요 body-parser
     응답.send("전송완료");
-    console.log(요청.body.title); //input 정보 전달하는 법
-    console.log(요청.body.date); //input 정보 전달하는 법
+    // console.log(요청.body.title); //input 정보 전달하는 법
+    // console.log(요청.body.date); //input 정보 전달하는 법
+    db.collection('counter').findOne({name : '게시물갯수'}, function(에러, 결과){  //db counter내의 총 게시물 갯수 찾음
+        console.log(결과.totalPost);
+        var 총게시물갯수 = 결과.totalPost; // 총 게시물 갯수 변수에 저장
+        db.collection('post').insertOne({_id : 총게시물갯수 + 1, 제목 : 요청.body.title, 날짜 : 요청.body.date}, function(){  //db.post에 새 게시물 기록
+            console.log("저장완료");
+            db.collection('counter').updateOne({name : '게시물갯수'}, {$inc : {totalPost : 1}}, function(에러, 결과){ //set operator 값을 바꿀때 inc 기존값에 더해줄 값
+                if(에러) return console.log(에러)               //db.counter내의 총 게시물 갯수 + 1
+            }); 
+        });
+
+        
+    });
+});
+
+app.get('/list', function(요청, 응답){
+    db.collection('post').find().toArray(function(에러, 결과){     // 모든 데이터를 다 가져오기
+        console.log(결과);
+        응답.render('list.ejs', {posts : 결과});   // ejs파일은 views로 옮기기
+    }); 
+    
 
 });
 
