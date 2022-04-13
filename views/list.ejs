@@ -1,89 +1,80 @@
 <!doctype html>
 <html>
-  <head>
-    <!-- Required meta tags -->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
- 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
 
-  </head>
-  <body>
-    
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container-fluid">
-          <a class="navbar-brand" href="#">Todo App</a>
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-          </button>
-          <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav">
-              <li class="nav-item">
-                <a class="nav-link active" aria-current="page" href="/">Home</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="write">Write</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="#">임시</a>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </nav>
-      <h4 class = "ml-2 my-3">서버에서 가져온 할일 리스트</h4>
-      <!-- <% for(var i = 0; i < posts.length; i++){ %>
+<head>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+  <link rel="stylesheet" href="/public/main.css">
+</head>
+
+<body>
+
+  <%- include('nav.html') %>
+  <h4 class="ml-2 my-3 text-center">서버에서 가져온 할일 리스트</h4>
+  <!-- <% for(var i = 0; i < posts.length; i++){ %>
         <h4>할일 제목 : <%=posts[i].제목%></h4> 
         <p>할일 마감 날짜 : <%=posts[i].날짜%></p>
         <button>삭제</button>
       <% } %> -->
-      
-      
-      <ul class = "list-group">
-        <% for(var i = 0; i < posts.length; i++){ %>
-        <li class = "list-group-item">
+
+  <div class="container">
+    <ul class="list-group">
+      <% for(var i=0; i < posts.length; i++){ %>
+        <li class="list-group-item">
           <p>글번호 : <%= posts[i]._id %></p>
           <h4>할일 제목 : <%= posts[i].제목 %></h4> <!-- ejs에서 정보 집어넣는 법-->
           <p>할일 마감 날짜 : <%= posts[i].날짜 %></p>
-          <button class = "delete" data-id="<%= posts[i]._id %>">삭제</button>
+          <button class="btn btn-danger delete" data-id="<%= posts[i]._id %>">삭제</button>
         </li>
         <% } %>
-      </ul>
-      <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    </ul>
+  </div>
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 
-      <script> // ajax 기본 문법
-        $('.delete').click(function(e){  //delete 요청 실행시 삭제 기능 수행
-          var 글번호 = e.target.dataset.id;  // e.target 누른 요소 dataset.id 숨겨져 있는 dataid를 가져와주세요
-          var 지금누른거 = $(this);  // this는 현재 이벤트가 동작하는 곳
-          $.ajax({
-          method : 'DELETE',  // 새로고침 없이 delete 요청
-          url : '/delete',
-          data : { _id : 글번호 }  // 누른 버튼의 해당 id만 눌렀을때 삭제가 되어야 함
-          }).done(function(결과){ // ajax 요청이 성공 했을때 실행되는 코드
-            console.log('성공했어염');
-            지금누른거.parent('li').fadeOut();   // 삭제 누른 버튼의 부모에서 li 태그를 찾아서 삭제 
-          }).fail(function(xhr, textStatus, errorThrown){   // xhr, textStatus, errorThrown  2번째 응답코드 3번째 에러메시지
-            console.log(xhr, textStatus, errorThrown);
+  <script> // ajax 기본 문법
+    $('.delete').click(function (e) {  //delete 요청 실행시 삭제 기능 수행
+      var 글번호 = e.target.dataset.id;  // e.target 누른 요소 dataset.id 숨겨져 있는 dataid를 가져와주세요
+      var 지금누른거 = $(this);  // this는 현재 이벤트가 동작하는 곳
+      $.ajax({
+        method: 'DELETE',  // 새로고침 없이 delete 요청
+        url: '/delete',
+        data: { _id: 글번호 }  // 누른 버튼의 해당 id만 눌렀을때 삭제가 되어야 함
+      }).done(function (결과) { // ajax 요청이 성공 했을때 실행되는 코드
+        console.log('성공했어염');
+        지금누른거.parent('li').fadeOut();   // 삭제 누른 버튼의 부모에서 li 태그를 찾아서 삭제 
+      }).fail(function (xhr, textStatus, errorThrown) {   // xhr, textStatus, errorThrown  2번째 응답코드 3번째 에러메시지
+        console.log(xhr, textStatus, errorThrown);
 
-          });
-        })
-        
-      </script>
-    <!-- Ajax란 서버랑 통신할수 있게 하는 js 문법 새로고침없이 할 수 있다는 부분이 큰 장점-->
+      });
+    })
 
-
+  </script>
+  <!-- Ajax란 서버랑 통신할수 있게 하는 js 문법 새로고침없이 할 수 있다는 부분이 큰 장점-->
 
 
-    <!-- Optional JavaScript; choose one of the two! -->
 
-    <!-- Option 1: Bootstrap Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
 
-    <!-- Option 2: Separate Popper and Bootstrap JS -->
-    
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js" integrity="sha384-7+zCNj/IqJ95wo16oMtfsKbZ9ccEh31eOz1HGyDuCQ6wgnyJNSYdrPa03rtR1zdB" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js" integrity="sha384-QJHtvGhmr9XOIpI6YVutG+2QOK9T+ZnN4kzFN1RtK3zEFEIsxhlmWl5/YESvpZ13" crossorigin="anonymous"></script>
-    
-  </body>
+  <!-- Optional JavaScript; choose one of the two! -->
+
+  <!-- Option 1: Bootstrap Bundle with Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
+    crossorigin="anonymous"></script>
+
+  <!-- Option 2: Separate Popper and Bootstrap JS -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"
+    integrity="sha384-7+zCNj/IqJ95wo16oMtfsKbZ9ccEh31eOz1HGyDuCQ6wgnyJNSYdrPa03rtR1zdB"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js"
+    integrity="sha384-QJHtvGhmr9XOIpI6YVutG+2QOK9T+ZnN4kzFN1RtK3zEFEIsxhlmWl5/YESvpZ13"
+    crossorigin="anonymous"></script>
+
+</body>
+
 </html>

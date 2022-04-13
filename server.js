@@ -7,6 +7,8 @@ var db;
 const MongoClient = require('mongodb').MongoClient;
 app.set('view engine', 'ejs'); //ejs 라이브러리 설치하고 사용하기 위한 코드
 
+app.use('/public', express.static('public')); //public폴더의 css파일을 사용하기 위한 코드
+
 
 
 MongoClient.connect('mongodb+srv://admin:admin@cluster0.4sxry.mongodb.net/todoapp?retryWrites=true&w=majority', function(에러, client){
@@ -24,11 +26,11 @@ MongoClient.connect('mongodb+srv://admin:admin@cluster0.4sxry.mongodb.net/todoap
 
 
 app.get('/', function(요청, 응답){
-    응답.sendFile(__dirname + "/index.html");
+    응답.render('index.ejs');
 });
 
 app.get('/write', function(요청, 응답){
-    응답.sendFile(__dirname + "/write.html");
+    응답.render('write.ejs');
 })
 
 app.post('/add', function(요청, 응답){ //submit한 정보는 요청 파라미터에 담겨있음 꺼내쓰려면 라이브러리 설치 필요 body-parser
@@ -64,6 +66,15 @@ app.delete('/delete', function(요청, 응답){
         console.log('삭제완료');
         응답.status(200).send({ message : '성공했습니다' });  // 응답코드사용 200은 OK의 뜻 400은 요청 실패  500은 서버에 의한 요청 실패
     });
+});
+
+app.get('/detail/:id', function(요청, 응답){   // url 파라미터 /:??
+    db.collection('post').findOne({_id : parseInt(요청.params.id)}, function(에러, 결과){  //url의 파라미터중 id라 이름 지은 파라미터를 넣음
+        console.log(결과);
+        응답.render('detail.ejs', { data : 결과 });
+        
+    });
+    
 });
 
 // REST API
