@@ -10,27 +10,18 @@ app.set('view engine', 'ejs'); //ejs 라이브러리 설치하고 사용하기 �
 
 
 MongoClient.connect('mongodb+srv://admin:admin@cluster0.4sxry.mongodb.net/todoapp?retryWrites=true&w=majority', function(에러, client){
-    if(에러) return console.log(에러) // 에러띄으눈법
+    if(에러) return console.log(에러); // 에러띄우는법
 
     db = client.db('todoapp');
-    db.collection('post').insertOne({이름 : 'John', _id : 100} , function(에러, 결과){ // db에 자료 저장하는 방법
-        console.log('저장완료');
-    });
+    // db.collection('post').insertOne({이름 : 'John', _id : 100} , function(에러, 결과){ // db에 자료 저장하는 방법
+    //     console.log('저장완료');
+    // });
 
     app.listen(8080, function(){ //8080 포트 
-        console.log('listening on 8080')
+        console.log('listening on 8080');
     }); 
 });
 
-
-
-app.get('/pet', function(요청, 응답){
-    응답.send("펫용품 사이트");
-});
-
-app.get('/beauty', function(요청, 응답){
-    응답.send("뷰티용품 사이트");
-});
 
 app.get('/', function(요청, 응답){
     응답.sendFile(__dirname + "/index.html");
@@ -45,16 +36,15 @@ app.post('/add', function(요청, 응답){ //submit한 정보는 요청 파라�
     // console.log(요청.body.title); //input 정보 전달하는 법
     // console.log(요청.body.date); //input 정보 전달하는 법
     db.collection('counter').findOne({name : '게시물갯수'}, function(에러, 결과){  //db counter내의 총 게시물 갯수 찾음
-        console.log(결과.totalPost);
         var 총게시물갯수 = 결과.totalPost; // 총 게시물 갯수 변수에 저장
-        db.collection('post').insertOne({_id : 총게시물갯수 + 1, 제목 : 요청.body.title, 날짜 : 요청.body.date}, function(){  //db.post에 새 게시물 기록
+        db.collection('post').insertOne({ _id:총게시물갯수 + 1, 제목:요청.body.title, 날짜:요청.body.date}, function(에러, 결과){  //db.post에 새 게시물 기록
             console.log("저장완료");
-            db.collection('counter').updateOne({name : '게시물갯수'}, {$inc : {totalPost : 1}}, function(에러, 결과){ //set operator 값을 바꿀때 inc 기존값에 더해줄 값
-                if(에러) return console.log(에러)               //db.counter내의 총 게시물 갯수 + 1
+            db.collection('counter').updateOne({name:'게시물갯수'}, { $inc: {totalPost:1}}, function(에러, 결과){ //set operator 값을 바꿀때 inc 기존값에 더해줄 값
+                if(에러) {
+                    return console.log(에러);
+                }                                                // 위에있는 코드db.counter내의 총 게시물 갯수 + 1
             }); 
         });
-
-        
     });
 });
 
@@ -65,6 +55,15 @@ app.get('/list', function(요청, 응답){
     }); 
     
 
+});
+
+app.delete('/delete', function(요청, 응답){
+    console.log(요청.body); //요청시 함께 보낸 데이터를 찾을 때
+    요청.body._id = parseInt(요청.body._id); // 자료를 넘길때 문자로 넘어올 경우 숫자로 다시 변경
+    db.collection('post').deleteOne(요청.body, function(에러, 결과){        // 요청.body에 담겨온 게시물번호를 가진 글을 db에서 찾아서 삭제
+        console.log('삭제완료');
+        응답.status(200).send({ message : '성공했습니다' });  // 응답코드사용 200은 OK의 뜻 400은 요청 실패  500은 서버에 의한 요청 실패
+    });
 });
 
 // REST API
