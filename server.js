@@ -5,6 +5,8 @@ const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({extended : true})); //bodyparser는 요청한 데이터 해석을 쉽게 도와줌
 var db;
 const MongoClient = require('mongodb').MongoClient;
+const methodOverride = require('method-override'); //method override 사용 위한 코드
+app.use(methodOverride('_method')); //method override 사용 위한 코드
 app.set('view engine', 'ejs'); //ejs 라이브러리 설치하고 사용하기 위한 코드
 
 app.use('/public', express.static('public')); //public폴더의 css파일을 사용하기 위한 코드
@@ -75,6 +77,21 @@ app.get('/detail/:id', function(요청, 응답){   // url 파라미터 /:??
         
     });
     
+});
+
+app.get('/edit/:id', function(요청, 응답){
+    db.collection('post').findOne({_id : parseInt(요청.params.id)}, function(에러, 결과){
+        console.log(결과);
+        응답.render('edit.ejs', { post : 결과 });
+    }); 
+});
+
+app.put('/edit/',function(요청, 응답){          //edit 경로로 put 요청시 폼에 담긴 제목, 날짜 데이터를 가지고 db에 업데이트함 
+    db.collection('post').updateOne({ _id : parseInt(요청.body.id) },
+    { $set : { 제목 : 요청.body.title, 날짜 : 요청.body.date }}, function(에러, 결과){
+        console.log('수정완료');
+        응답.redirect('/list');     //수정 완료시 다른 페이지로 이동
+    });
 });
 
 // REST API
