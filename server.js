@@ -1,5 +1,8 @@
 //서버를 띄우기 위한 문법들
 const express = require('express');
+const passport = require('passport'); // passport 라이브러리 설치
+const LocalStrategy = require('passport-local').Strategy; // passport-local 라이브러리 설치
+const session = requite('express-session');  // express-session 라이브러리 설치
 const app = express();
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({extended : true})); //bodyparser는 요청한 데이터 해석을 쉽게 도와줌
@@ -9,6 +12,12 @@ const methodOverride = require('method-override'); //method override 사용 위�
 app.use(methodOverride('_method')); //method override 사용 위한 코드
 app.set('view engine', 'ejs'); //ejs 라이브러리 설치하고 사용하기 위한 코드
 
+app.use(session({secret : '비밀코드', resave : true, saveUninitialized : false}));
+app.use(passport.initialize());
+app.use(passport.session());
+
+
+ 
 app.use('/public', express.static('public')); //public폴더의 css파일을 사용하기 위한 코드
 
 
@@ -92,6 +101,14 @@ app.put('/edit/',function(요청, 응답){          //edit 경로로 put 요청�
         console.log('수정완료');
         응답.redirect('/list');     //수정 완료시 다른 페이지로 이동
     });
+});
+
+app.get('/login', function(요청, 응답){
+    응답.render('login.ejs')
+});
+
+app.post('/login', passport.authenticate('local', {failureRedirect : '/fail'}), function(요청, 응답){
+    응답.redirect('/')
 });
 
 // REST API
