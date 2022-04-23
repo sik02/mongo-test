@@ -2,13 +2,14 @@
 const express = require('express');
 const passport = require('passport'); // passport 라이브러리 설치
 const LocalStrategy = require('passport-local').Strategy; // passport-local 라이브러리 설치
-const session = requite('express-session');  // express-session 라이브러리 설치
+const session = require('express-session');  // express-session 라이브러리 설치
 const app = express();
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({extended : true})); //bodyparser는 요청한 데이터 해석을 쉽게 도와줌
 var db;
 const MongoClient = require('mongodb').MongoClient;
 const methodOverride = require('method-override'); //method override 사용 위한 코드
+const { Passport } = require('passport/lib');
 app.use(methodOverride('_method')); //method override 사용 위한 코드
 app.set('view engine', 'ejs'); //ejs 라이브러리 설치하고 사용하기 위한 코드
 
@@ -61,6 +62,7 @@ app.post('/add', function(요청, 응답){ //submit한 정보는 요청 파라�
     });
 });
 
+
 app.get('/list', function(요청, 응답){
     db.collection('post').find().toArray(function(에러, 결과){     // 모든 데이터를 다 가져오기
         console.log(결과);
@@ -109,6 +111,62 @@ app.get('/login', function(요청, 응답){
 
 app.post('/login', passport.authenticate('local', {failureRedirect : '/fail'}), function(요청, 응답){
     응답.redirect('/')
+});
+
+app.get('/mypage', 로그인했니, function(요청, 응답){
+    console.log(요청.user);
+    응답.render('mypage.ejs', {사용자 : 요청.user})
+})
+
+app.get('/signup', function(요청, 응답){
+    응답.render('signup.ejs')
+});
+
+app.post('/signup', function(요청, 응답){
+    db.collection('login').insertOne({id:요청.body.id, pw:요청.body.pw}, function(에러, 결과){
+        console.log("저장완료");
+        응답.redirect('/')
+    })
+});
+
+
+function 로그인했니(요청, 응답, next){  // 미들 웨어
+    if(요청.user){  // 요청.user가 있는지 검사
+        next()  // 통과시킴 오류없이 넘어감
+    } else{
+        응답.send('로그인 안함')
+    }
+}
+
+passport.use(new LocalStrategy({  // 인증하는 방법 strategy
+    usernameField: 'id', // html form에서 id에서 가져온 값
+    passwordField: 'pw', // html form에서 pw에서 가져온 값
+    session: true,
+    passReqToCallback: false,
+}, function (입력한아이디, 입력한비번, done) { // 실제로 입력한 아이디, 비번을 파라미터에 받음
+    db.collection('login').findOne({ id: 입력한아이디 }, function (에러, 결과) {  // 아이디가 맞는지 먼저 검사
+        if (에러) {
+            return done(에러)
+        }
+        if (!결과) { // 일치하는 아이디가 없으면
+            return done(null, false, { message: '존재하지않는 아이디요' })
+        }
+        if (입력한비번 == 결과.pw) { // 아이디가 있어서 넘어와서 비밀번호와 입력PW가 같다면
+            return done(null, 결과)
+        } else {
+            return done(null, false, { message: '비번틀렸어요' })
+        }
+    })
+}));
+
+passport.serializeUser(function(user, done){ // 세션을 저장시키는 코드
+    done(null, user.id)
+});
+
+passport.deserializeUser(function(아이디, done){  // 이 세션 데이터를 가진 사람을 DB에서 찾아주세요   
+    db.collection('login').findOne({id : 아이디}, function(에러, 결과){    // DB에서 user.id로 유저를 찾으면 유저 정보를 아래 파라미터에 넣어줌
+        done(null, 결과)  // 마이페이지에서 해당 유저의 정보를 나타내기에 적합함
+    })
 });
 
 // REST API
