@@ -13,6 +13,8 @@ const { Passport } = require('passport/lib');
 app.use(methodOverride('_method')); //method override 사용 위한 코드
 app.set('view engine', 'ejs'); //ejs 라이브러리 설치하고 사용하기 위한 코드
 
+require('dotenv').config() //환경변수 사용 가능
+
 app.use(session({secret : '비밀코드', resave : true, saveUninitialized : false}));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -23,7 +25,7 @@ app.use('/public', express.static('public')); //public폴더의 css파일을 사
 
 
 
-MongoClient.connect('mongodb+srv://admin:admin@cluster0.4sxry.mongodb.net/todoapp?retryWrites=true&w=majority', function(에러, client){
+MongoClient.connect(process.env.DB_URL, function(에러, client){ // env를 이용해서 코드 변경
     if(에러) return console.log(에러); // 에러띄우는법
 
     db = client.db('todoapp');
@@ -31,7 +33,7 @@ MongoClient.connect('mongodb+srv://admin:admin@cluster0.4sxry.mongodb.net/todoap
     //     console.log('저장완료');
     // });
 
-    app.listen(8080, function(){ //8080 포트 
+    app.listen(process.env.PORT, function(){ // 8080 포트 env이용해서 코드 변경
         console.log('listening on 8080');
     }); 
 });
@@ -65,11 +67,9 @@ app.post('/add', function(요청, 응답){ //submit한 정보는 요청 파라�
 
 app.get('/list', function(요청, 응답){
     db.collection('post').find().toArray(function(에러, 결과){     // 모든 데이터를 다 가져오기
-        console.log(결과);
+        
         응답.render('list.ejs', {posts : 결과});   // ejs파일은 views로 옮기기
     }); 
-    
-
 });
 
 app.delete('/delete', function(요청, 응답){
@@ -129,6 +129,30 @@ app.post('/signup', function(요청, 응답){
     })
 });
 
+app.get('/search', (요청, 응답) => {
+    var 검색조건 = [
+        {
+          $search: {
+            index: 'titleSearch',
+            text: {
+              query: 요청.query.value,
+              path: '제목'  // 제목날짜 둘다 찾고 싶으면 ['제목', '날짜']
+            }
+          }
+        },
+        // { $sort : {_id : 1 } }, // 정렬
+        // { $limit : 5} // 갯수 제한
+        // { $project : { 제목 : 1, _id: 1, score : { $meta : "searchScore" }}} // 검색 결과에서 필터 주기 원하는 것만 보여줄 수 있음
+      ] 
+    db.collection('post').aggregate(검색조건).toArray((에러, 결과)=>{ // search index로 검색하는 방식 aggregate는 검색 조건을 여러개 사용할 수 있음
+        console.log(결과)
+        응답.render('search.ejs', {posts : 결과})
+    })
+});
+
+// 정규식을 사용해서 문자열 검색 사용 /abc/ 게시물이 많을 경우 find로 찾는 시간이 매우 오래걸림
+// indexing을 해두면 게시물을 빨리 찾을 수 있음 binary search를 위해 몽고 사이트에서 indexing을 만들어 놓음
+// text index는 문제점이 많기에 search index 사용
 
 function 로그인했니(요청, 응답, next){  // 미들 웨어
     if(요청.user){  // 요청.user가 있는지 검사
@@ -179,4 +203,9 @@ passport.deserializeUser(function(아이디, done){  // 이 세션 데이터를 
 // 6. code on demand 
 // 결론적으로는 url만 보고 어떤 사이트인지 알 수 있게 구성을 하고 만들어야하는게 중요함
 // url 작성시 명사만 사용, 하위문서는 /로 나타냄, 파일확장저 사용 X, 띄어쓰기는 -(대시) 활용, 자료 하나당 하나의 url
+
+
+// env파일
+// 환경이나 DB등 장소가 바뀜에 따라 가변적인 변수데이터를 환경변수라고 함
+// 
 
