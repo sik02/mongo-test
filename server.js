@@ -19,10 +19,10 @@ app.use(session({secret : '비밀코드', resave : true, saveUninitialized : fal
 app.use(passport.initialize());
 app.use(passport.session());
 
-
  
 app.use('/public', express.static('public')); //public폴더의 css파일을 사용하기 위한 코드
 
+app.use('/shop', require('./routes/shop.js') );   // 미들웨어를 사용해서 shop.js 라우터 첨부하기 /shop 경로로 요청했을때 미들웨어 적용
 
 
 MongoClient.connect(process.env.DB_URL, function(에러, client){ // env를 이용해서 코드 변경
@@ -49,11 +49,10 @@ app.get('/write', function(요청, 응답){
 
 app.post('/add', function(요청, 응답){ //submit한 정보는 요청 파라미터에 담겨있음 꺼내쓰려면 라이브러리 설치 필요 body-parser
     응답.send("전송완료");
-    // console.log(요청.body.title); //input 정보 전달하는 법
-    // console.log(요청.body.date); //input 정보 전달하는 법
     db.collection('counter').findOne({name : '게시물갯수'}, function(에러, 결과){  //db counter내의 총 게시물 갯수 찾음
         var 총게시물갯수 = 결과.totalPost; // 총 게시물 갯수 변수에 저장
-        db.collection('post').insertOne({ _id:총게시물갯수 + 1, 제목:요청.body.title, 날짜:요청.body.date}, function(에러, 결과){  //db.post에 새 게시물 기록
+        var DB저장 = { _id:총게시물갯수 + 1, 작성자:요청.user._id, 제목:요청.body.title, 날짜:요청.body.date }; // user의 정보까지 db에 추가
+        db.collection('post').insertOne(DB저장, function(에러, 결과){  //db.post에 새 게시물 기록
             console.log("저장완료");
             db.collection('counter').updateOne({name:'게시물갯수'}, { $inc: {totalPost:1}}, function(에러, 결과){ //set operator 값을 바꿀때 inc 기존값에 더해줄 값
                 if(에러) {
@@ -67,7 +66,6 @@ app.post('/add', function(요청, 응답){ //submit한 정보는 요청 파라�
 
 app.get('/list', function(요청, 응답){
     db.collection('post').find().toArray(function(에러, 결과){     // 모든 데이터를 다 가져오기
-        
         응답.render('list.ejs', {posts : 결과});   // ejs파일은 views로 옮기기
     }); 
 });
@@ -75,8 +73,12 @@ app.get('/list', function(요청, 응답){
 app.delete('/delete', function(요청, 응답){
     console.log(요청.body); //요청시 함께 보낸 데이터를 찾을 때
     요청.body._id = parseInt(요청.body._id); // 자료를 넘길때 문자로 넘어올 경우 숫자로 다시 변경
-    db.collection('post').deleteOne(요청.body, function(에러, 결과){        // 요청.body에 담겨온 게시물번호를 가진 글을 db에서 찾아서 삭제
-        console.log('삭제완료');
+    var 삭제할데이터 = { _id: 요청.body._id , 작성자: 요청.user._id } // 본인이 작성한 게시물이 아닐시 삭제되지 않음
+    db.collection('post').deleteOne(삭제할데이터, function(에러, 결과){        // 요청.body에 담겨온 게시물번호를 가진 글을 db에서 찾아서 삭제
+        // console.log('삭제완료');
+        if(에러){
+            console.log(에러);
+        }
         응답.status(200).send({ message : '성공했습니다' });  // 응답코드사용 200은 OK의 뜻 400은 요청 실패  500은 서버에 의한 요청 실패
     });
 });
@@ -124,7 +126,6 @@ app.get('/signup', function(요청, 응답){
 
 app.post('/signup', function(요청, 응답){
     db.collection('login').insertOne({id:요청.body.id, pw:요청.body.pw}, function(에러, 결과){
-        console.log("저장완료");
         응답.redirect('/')
     })
 });
@@ -192,6 +193,9 @@ passport.deserializeUser(function(아이디, done){  // 이 세션 데이터를 
         done(null, 결과)  // 마이페이지에서 해당 유저의 정보를 나타내기에 적합함
     })
 });
+
+
+
 
 // REST API
 // REST 원칙
