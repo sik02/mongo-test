@@ -13,6 +13,28 @@ const { Passport } = require('passport/lib');
 app.use(methodOverride('_method')); //method override 사용 위한 코드
 app.set('view engine', 'ejs'); //ejs 라이브러리 설치하고 사용하기 위한 코드
 
+let multer = require('multer'); // multer 라이브러리 사용 위한 코드
+var storage = multer.diskStorage({  // disk는 같은 폴더에 저장 memory는 램에다 저장
+    destination : function(req, file, cb){
+        cb(null, './public/image') // 이미지 폴더 경로 정의
+    },
+    filename : function(req, file, cb){ // 파일명 설정
+        cb(null, file.originalname)
+    },
+    filefilter : function(req, file, cb){ // 파일 형식 제한두기
+        var ext = path.extname(file.originalname);
+        if(ext !== '.png' && ext !== '.jpg' && ext !=='.jpeg'){
+            return callback(new Error('PNG, JPG만 업로드하세요'))
+        }
+        callback(null, true)
+    },
+    limits:{
+        fileSize: 1024 * 1024  // 파일 사이즈 제한
+    }
+});
+
+var upload = multer({storage : storage}); // 설정 변수 설정
+
 require('dotenv').config() //환경변수 사용 가능
 
 app.use(session({secret : '비밀코드', resave : true, saveUninitialized : false}));
@@ -149,6 +171,18 @@ app.get('/search', (요청, 응답) => {
         console.log(결과)
         응답.render('search.ejs', {posts : 결과})
     })
+});
+
+app.get('/upload', function(요청, 응답){
+  응답.render('upload.ejs')  
+});
+
+app.post('/upload', upload.single('프로필'), function(요청, 응답){ //single은 파일 1개 전송 array는 여러개 가능
+    응답.send('업로드완료')
+});
+
+app.get('/image/:imageName', function(요청, 응답){
+    응답.sendFile( __dirname + '/public/image/' + 요청.params.imageName )
 });
 
 // 정규식을 사용해서 문자열 검색 사용 /abc/ 게시물이 많을 경우 find로 찾는 시간이 매우 오래걸림
