@@ -10,10 +10,14 @@ var db;
 const MongoClient = require('mongodb').MongoClient;
 const methodOverride = require('method-override'); //method override 사용 위한 코드
 const { Passport } = require('passport/lib');
+
+const {ObjectId} = require('mongodb');  // ObjectId 사용
+
 app.use(methodOverride('_method')); //method override 사용 위한 코드
 app.set('view engine', 'ejs'); //ejs 라이브러리 설치하고 사용하기 위한 코드
 
 let multer = require('multer'); // multer 라이브러리 사용 위한 코드
+const { defaultMaxListeners } = require('mongodb/lib/apm');
 var storage = multer.diskStorage({  // disk는 같은 폴더에 저장 memory는 램에다 저장
     destination : function(req, file, cb){
         cb(null, './public/image') // 이미지 폴더 경로 정의
@@ -58,6 +62,45 @@ MongoClient.connect(process.env.DB_URL, function(에러, client){ // env를 이�
     app.listen(process.env.PORT, function(){ // 8080 포트 env이용해서 코드 변경
         console.log('listening on 8080');
     }); 
+});
+
+function 로그인했니(요청, 응답, next){  // 미들 웨어
+    if(요청.user){  // 요청.user가 있는지 검사
+        next()  // 통과시킴 오류없이 넘어감
+    } else{
+        응답.send('로그인 안함')
+    }
+}
+
+passport.use(new LocalStrategy({  // 인증하는 방법 strategy
+    usernameField: 'id', // html form에서 id에서 가져온 값
+    passwordField: 'pw', // html form에서 pw에서 가져온 값
+    session: true,
+    passReqToCallback: false,
+}, function (입력한아이디, 입력한비번, done) { // 실제로 입력한 아이디, 비번을 파라미터에 받음
+    db.collection('login').findOne({ id: 입력한아이디 }, function (에러, 결과) {  // 아이디가 맞는지 먼저 검사
+        if (에러) {
+            return done(에러)
+        }
+        if (!결과) { // 일치하는 아이디가 없으면
+            return done(null, false, { message: '존재하지않는 아이디요' })
+        }
+        if (입력한비번 == 결과.pw) { // 아이디가 있어서 넘어와서 비밀번호와 입력PW가 같다면
+            return done(null, 결과)
+        } else {
+            return done(null, false, { message: '비번틀렸어요' })
+        }
+    })
+}));
+
+passport.serializeUser(function(user, done){ // 세션을 저장시키는 코드
+    done(null, user.id)
+});
+
+passport.deserializeUser(function(아이디, done){  // 이 세션 데이터를 가진 사람을 DB에서 찾아주세요   
+    db.collection('login').findOne({id : 아이디}, function(에러, 결과){    // DB에서 user.id로 유저를 찾으면 유저 정보를 아래 파라미터에 넣어줌
+        done(null, 결과)  // 마이페이지에서 해당 유저의 정보를 나타내기에 적합함
+    })
 });
 
 
@@ -185,48 +228,66 @@ app.get('/image/:imageName', function(요청, 응답){
     응답.sendFile( __dirname + '/public/image/' + 요청.params.imageName )
 });
 
+app.post('/chatroom', 로그인했니, function(요청, 응답){  // 채팅방 자료 db에 저장
+    var 저장할거 = {
+        title : '채팅방이름',
+        member : [ObjectId(요청.body.당한사람id), 요청.user._id],
+        date : new Date()
+    }
+    db.collection('chatroom').insertOne(저장할거).then((결과)=>{
+        응답.send('저장완료')
+    });
+});
+
+app.get('/chat', 로그인했니, function(요청, 응답){
+    db.collection('chatroom').find({ member : 요청.user._id }).toArray().then((결과)=>{
+        응답.render('chat.ejs', { data : 결과 })
+    });
+});
+
+app.post('/message', 로그인했니, function(요청, 응답){
+    var 저장할거 = {
+        parent : 요청.body.parent,
+        content : 요청.body.content,
+        userid : 요청.user._id,
+        date : new Date(),
+    }
+    db.collection('message').insertOne(저장할거).then((결과)=>{
+        console.log('저장성공');
+        응답.send('DB저장성공');
+    }).catch(()=>{
+        console.log("실패")
+    });
+});
+
+app.get('/message/:id', 로그인했니, function(요청, 응답){  // 서버와 유저간 실시간 소통채널 열기
+    응답.writeHead(200, {                           // get, post등 http요청시 몰래 전달되는 정보 존재
+        "Connection": "keep-alive",                 // 유저의 언어, 브라우저 정보, 가진 쿠키 등 정보들은 Header라는 공간에 담겨있음
+        "Content-Type": "text/event-stream",        // header를 해당 코드르 바꿔줌으로써 실시간 채팅 채널 개설
+        "Cache-Control": "no-cache",
+    });
+    db.collection('message').find({ parent : 요청.params.id }).toArray().then((결과)=>{    // get, post요청은 1회 요청시 1회 응답만 가능 헤더 수정시 여러번 응답 가능
+        응답.write('event: test\n');                             
+        응답.write('data: ' + JSON.stringify(결과) + '\n\n');  // 서버에서 실시간 전송시 문자 자료만 전송 가능 object나 array에 따옴표치면 JSON임 JSON은 문자취급
+    });
+    
+    // change Stream 설정법 사용시 서버에 변동사항이 생기면 업데이트 사항을 자동으로 알려줌으로써 실시간 작동이 가능함
+    const pipeline = [  // 특정 document만 감시하고 싶으면 해당 코드 사용하면 됨
+        { $match: { 'fullDocument.parent' : 요청.params.id} }
+    ];
+    const collection = db.collection('message');
+    const changeStream = collection.watch(pipeline);  // 실시간 감시
+    changeStream.on('change', (result)=>{  // 변동사항이 생기면 아래 코드 실행
+        // console.log(result.fullDocument) // 수정, 삭제 결과가 담겨있음
+        응답.write('event: test\n');
+        응답.write('data: ' + JSON.stringify([result.fullDocument]) + '\n\n');
+    });
+});
+
+
 // 정규식을 사용해서 문자열 검색 사용 /abc/ 게시물이 많을 경우 find로 찾는 시간이 매우 오래걸림
 // indexing을 해두면 게시물을 빨리 찾을 수 있음 binary search를 위해 몽고 사이트에서 indexing을 만들어 놓음
 // text index는 문제점이 많기에 search index 사용
-
-function 로그인했니(요청, 응답, next){  // 미들 웨어
-    if(요청.user){  // 요청.user가 있는지 검사
-        next()  // 통과시킴 오류없이 넘어감
-    } else{
-        응답.send('로그인 안함')
-    }
-}
-
-passport.use(new LocalStrategy({  // 인증하는 방법 strategy
-    usernameField: 'id', // html form에서 id에서 가져온 값
-    passwordField: 'pw', // html form에서 pw에서 가져온 값
-    session: true,
-    passReqToCallback: false,
-}, function (입력한아이디, 입력한비번, done) { // 실제로 입력한 아이디, 비번을 파라미터에 받음
-    db.collection('login').findOne({ id: 입력한아이디 }, function (에러, 결과) {  // 아이디가 맞는지 먼저 검사
-        if (에러) {
-            return done(에러)
-        }
-        if (!결과) { // 일치하는 아이디가 없으면
-            return done(null, false, { message: '존재하지않는 아이디요' })
-        }
-        if (입력한비번 == 결과.pw) { // 아이디가 있어서 넘어와서 비밀번호와 입력PW가 같다면
-            return done(null, 결과)
-        } else {
-            return done(null, false, { message: '비번틀렸어요' })
-        }
-    })
-}));
-
-passport.serializeUser(function(user, done){ // 세션을 저장시키는 코드
-    done(null, user.id)
-});
-
-passport.deserializeUser(function(아이디, done){  // 이 세션 데이터를 가진 사람을 DB에서 찾아주세요   
-    db.collection('login').findOne({id : 아이디}, function(에러, 결과){    // DB에서 user.id로 유저를 찾으면 유저 정보를 아래 파라미터에 넣어줌
-        done(null, 결과)  // 마이페이지에서 해당 유저의 정보를 나타내기에 적합함
-    })
-});
 
 
 

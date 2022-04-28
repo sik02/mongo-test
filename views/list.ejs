@@ -39,6 +39,7 @@
           <a href = "/detail/<%= posts[i]._id%>"><h4>할일 제목 : <%= posts[i].제목 %></h4></a> <!-- ejs에서 정보 집어넣는 법-->
           <p>할일 마감 날짜 : <%= posts[i].날짜 %></p>
           <button class="btn btn-danger delete" data-id="<%= posts[i]._id %>">삭제</button>
+          <button class="btn btn-secondary chat" data-id="<%= posts[i].작성자 %>">채팅방</button>
         </li>
         <% } %>
     </ul>
@@ -61,6 +62,13 @@
 
       });
     })
+
+    $('.chat').click(function(e){
+      var id = e.target.dataset.id;
+      $.post('/chatroom', {당한사람id : id}).then(()=>{
+        console.log('성공');
+      })
+    });
 
   </script>
   <!-- Ajax란 서버랑 통신할수 있게 하는 js 문법 새로고침없이 할 수 있다는 부분이 큰 장점-->

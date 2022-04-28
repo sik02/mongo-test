@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+    <title>Document</title>
+
+    <link rel = "stylesheet" href = "/public/chat.css">
+</head>
+
+<body>
+    <%- include('nav.html') %>
+    <div class="container p-4 detail">
+      <div class="row">
+        <div class="col-3">
+          <ul class="list-group chat-list">
+            <% for( let i = 0; i < data.length; i++ ){ %>
+              <li class="list-group-item" data-id="<%= data[i]._id %>">
+                <h6><%= data[i].title %></h6>
+                <h6 class="text-small"><%= data[i].member[0] %></h6>
+              </li>
+            <% } %>
+          </ul>
+        </div>
+      
+        <div class="col-9 p-0">
+          <div class="chat-room">
+            <ul class="list-group chat-content">
+              <li><span class="chat-box">채팅방1 내용</span></li>
+              <li><span class="chat-box">채팅방1 내용</span></li>
+              <li><span class="chat-box mine">채팅방1 내용</span></li>
+            </ul>
+            <div class="input-group">
+              <input class="form-control" id="chat-input">
+              <button class="btn btn-secondary" id="send">전송</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div> 
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    </script>
+
+    <script>
+      var 지금누른채팅방id;
+      var eventSource;
+      $('.list-group-item').click(function(){
+        $(this).css('background-color', '#eee');
+        지금누른채팅방id = this.dataset.id;
+        $('.chat-content').html('');  // 클릭시 html을 비워주세요
+
+        if(eventSource != undefined){
+          eventSource.close()  // 실시간 소통 채널 나가기
+        }
+        
+
+        eventSource = new EventSource('/message/' + 지금누른채팅방id); // 실시간 소통채널 입장 완료 유저의 데이터 수신
+        eventSource.addEventListener('test', function(e){
+         var 가져온거 =  JSON.parse(e.data);
+         가져온거.forEach(function(i){   // 가져온거 갯수 만큼 반복문 돌려줌
+          $('.chat-content').append('<li><span class="chat-box">' + i.content + '</span></li>')
+         });
+        });
+
+      });
+
+      $('#send').click(function(e){
+        var 채팅내용 = $('#chat-input').val();
+        var 보낼거 = {
+          parent : 지금누른채팅방id,
+          content : 채팅내용,
+        }
+        $.post('/message', 보낼거).then(()=>{
+          console.log('전송성공');
+        });
+      });
+
+    </script>
+</body>
+
+</html>
