@@ -45,6 +45,12 @@ app.use(session({secret : '비밀코드', resave : true, saveUninitialized : fal
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Socket.io 세팅 방법   npm install socket.io
+const http = require('http').createServer(app);
+const {Server} = require('socket.io');
+const io = new Server(http);
+
+
  
 app.use('/public', express.static('public')); //public폴더의 css파일을 사용하기 위한 코드
 
@@ -59,7 +65,7 @@ MongoClient.connect(process.env.DB_URL, function(에러, client){ // env를 이�
     //     console.log('저장완료');
     // });
 
-    app.listen(process.env.PORT, function(){ // 8080 포트 env이용해서 코드 변경
+    http.listen(process.env.PORT, function(){ // 8080 포트 env이용해서 코드 변경   // app.listen에서 http로 변경 소켓 사용을 위하여
         console.log('listening on 8080');
     }); 
 });
@@ -281,6 +287,26 @@ app.get('/message/:id', 로그인했니, function(요청, 응답){  // 서버와
         // console.log(result.fullDocument) // 수정, 삭제 결과가 담겨있음
         응답.write('event: test\n');
         응답.write('data: ' + JSON.stringify([result.fullDocument]) + '\n\n');
+    });
+});
+
+app.get('/socket', function(요청, 응답){
+    응답.render('socket.ejs');
+});
+
+io.on('connection', function(socket){ // 웹소켓 접속시 해당 코드 실행
+    console.log('유저 접속');
+
+    socket.on('room1-send', function(data){
+        io.to('room1').emit('broadcast', data);
+    });
+
+    socket.on('joinroom', function(data){
+        socket.join('room1'); // 채팅방 생성, 입장
+    });
+
+    socket.on('user-send', function(data){
+        io.to(socket.id).emit('broadcast', data); // io.emit(전체 발송)  // socket.id를 가진 유저에게만 전송
     });
 });
 
